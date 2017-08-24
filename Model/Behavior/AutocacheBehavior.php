@@ -45,7 +45,6 @@ class AutocacheBehavior extends ModelBehavior {
 	 * @param array $config 
 	 */
 	public function setup(Model $model, $config = array()) {
-		
 		// catch and adjust old $config parameter names that would have been used rarely and were 
 		// confusingly named:-
 		//  - the "check_cache" parameter has been renamed to "cache_config_name_check"
@@ -95,7 +94,8 @@ class AutocacheBehavior extends ModelBehavior {
 	 * @param array $query 
 	 */
 	public function beforeFind(Model $model, $query) {
-
+	      
+	    //echo "<pre>"; var_dump($model->useDbConfig); echo "</pre>";
 		// Provides a place in the Model that we can use to find out what 
 		// autocache did on the last query
 		$model->autocache_is_from = false;
@@ -122,16 +122,20 @@ class AutocacheBehavior extends ModelBehavior {
 			$database_config = &ConnectionManager::$config;
 			if (!isset($database_config->{$this->runtime['dummy_datasource']})) {
 				$datasource_name = (string) $this->runtime['dummy_datasource'];
+				if(empty($database_config)){
+				    $database_config = new \stdClass();
+				}
 				$database_config->$datasource_name = array(
 					'datasource' => str_replace('Behavior', '', get_class($this)) . '.AutocacheSource',
 					'database' => null
 				);
+
 			}
 
 			// Use a dummy database connection to prevent any query
 			$model->useDbConfig = $this->runtime['dummy_datasource'];
 		}
-
+		
 		return $query;
 	}
 
@@ -142,13 +146,15 @@ class AutocacheBehavior extends ModelBehavior {
 	 * @param array $results
 	 */
 	public function afterFind(Model $model, $results, $primary = false) {
-
 		// Check if we obtained cached results
 		if ($this->__cached_results) {
-
+		    
 			// reset the useDbConfig attribute back to what it was
-			$model->useDbConfig = $this->runtime['real_datasource'];
-			unset($this->runtime['real_datasource']);
+		    if(!empty($this->runtime['real_datasource'])){
+		        $model->useDbConfig = $this->runtime['real_datasource'];
+		        unset($this->runtime['real_datasource']);
+		    }
+			
 
 			// A flag to indicate in the Model if the last query was from cache
 			$model->autocache_is_from = true;
@@ -156,11 +162,13 @@ class AutocacheBehavior extends ModelBehavior {
 			// return the cached results
 			return $this->__cached_results;
 		}
-
+		
 		// Cache the result if there is a config defined
 		if (isset($this->runtime['config']) && !isset($this->runtime['flush'])) {
 			Cache::write($this->runtime['name'], $results, $this->runtime['config']);
 		}
+		
+		
 
 		return $results;
 	}
